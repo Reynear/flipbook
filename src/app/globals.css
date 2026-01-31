@@ -1,0 +1,327 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #faf9f6;
+    --foreground: #000000;
+    --border: #000000;
+    --shadow: #000000;
+    --brand-blue: #2563eb;
+    --brand-yellow: #facc15;
+    --brand-magenta: #d946ef;
+  }
+
+  [data-theme="dark"] {
+    --background: #0a0a0a;
+    --foreground: #ffffff;
+    --border: #ffffff;
+    --shadow: #ffffff;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-brutal-cream text-brutal-black antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01";
+  }
+
+  ::selection {
+    @apply bg-brand-yellow text-brutal-black;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-blue ring-offset-2 ring-offset-brutal-cream;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2
+           px-6 py-3 
+           font-bold uppercase tracking-wider text-sm
+           border-2 border-brutal-black
+           transition-all duration-150 ease-brutal
+           cursor-pointer select-none
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-blue text-brutal-white
+           shadow-brutal
+           hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-brutal-md
+           active:translate-x-0 active:translate-y-0 active:shadow-brutal-sm;
+  }
+
+  .btn-secondary {
+    @apply btn bg-brand-yellow text-brutal-black
+           shadow-brutal
+           hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-brutal-md
+           active:translate-x-0 active:translate-y-0 active:shadow-brutal-sm;
+  }
+
+  .btn-outline {
+    @apply btn bg-brutal-white text-brutal-black
+           shadow-brutal
+           hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-brutal-md hover:bg-brand-yellow
+           active:translate-x-0 active:translate-y-0 active:shadow-brutal-sm;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent border-transparent shadow-none
+           hover:bg-brutal-black hover:text-brutal-white
+           active:bg-brutal-black/90;
+  }
+
+  .btn-danger {
+    @apply btn bg-brand-red text-brutal-white
+           shadow-brutal
+           hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-brutal-md
+           active:translate-x-0 active:translate-y-0 active:shadow-brutal-sm;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-xs;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-base;
+  }
+
+  .btn-icon {
+    @apply p-3;
+  }
+
+  .card {
+    @apply bg-brutal-white border-2 border-brutal-black p-6
+           shadow-brutal
+           transition-all duration-150 ease-brutal;
+  }
+
+  .card-hover {
+    @apply card
+           hover:-translate-y-1 hover:-translate-x-1 hover:shadow-brutal-md
+           cursor-pointer;
+  }
+
+  .card-feature {
+    @apply card p-8;
+  }
+
+  .card-pricing {
+    @apply card p-8 flex flex-col;
+  }
+
+  .card-pricing-featured {
+    @apply card-pricing bg-brand-yellow border-3;
+  }
+
+  .input {
+    @apply w-full px-4 py-3
+           bg-brutal-white text-brutal-black
+           border-2 border-brutal-black
+           placeholder:text-brutal-black/50
+           transition-all duration-150 ease-brutal
+           focus:shadow-brutal focus:-translate-y-0.5 focus:-translate-x-0.5;
+  }
+
+  .input-error {
+    @apply input border-brand-red;
+  }
+
+  .label {
+    @apply block text-sm font-bold uppercase tracking-wider mb-2;
+  }
+
+  .input-group {
+    @apply space-y-1;
+  }
+
+  .error-message {
+    @apply text-brand-red text-sm font-medium mt-1;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1
+           text-xs font-bold uppercase tracking-wider
+           border-2 border-brutal-black;
+  }
+
+  .badge-primary {
+    @apply badge bg-brand-blue text-brutal-white;
+  }
+
+  .badge-secondary {
+    @apply badge bg-brand-yellow text-brutal-black;
+  }
+
+  .badge-pro {
+    @apply badge bg-brand-magenta text-brutal-white;
+  }
+
+  .badge-free {
+    @apply badge bg-brutal-gray text-brutal-black;
+  }
+
+  .nav {
+    @apply flex items-center gap-6;
+  }
+
+  .nav-link {
+    @apply text-sm font-bold uppercase tracking-wider
+           hover:text-brand-blue
+           transition-colors duration-150;
+  }
+
+  .nav-link-active {
+    @apply nav-link text-brand-blue underline underline-offset-4 decoration-2;
+  }
+
+  .section {
+    @apply py-16 md:py-24;
+  }
+
+  .section-header {
+    @apply mb-12 md:mb-16;
+  }
+
+  .container-brutal {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .divider {
+    @apply h-0.5 bg-brutal-black w-full;
+  }
+
+  .divider-dashed {
+    @apply border-t-2 border-dashed border-brutal-black w-full;
+  }
+
+  .modal-backdrop {
+    @apply fixed inset-0 bg-brutal-black/80 z-50
+           flex items-center justify-center p-4;
+  }
+
+  .modal {
+    @apply bg-brutal-white border-3 border-brutal-black
+           shadow-brutal-lg
+           w-full max-w-lg
+           animate-bounce-in;
+  }
+
+  .modal-header {
+    @apply p-6 border-b-2 border-brutal-black;
+  }
+
+  .modal-body {
+    @apply p-6;
+  }
+
+  .modal-footer {
+    @apply p-6 border-t-2 border-brutal-black
+           flex items-center justify-end gap-3;
+  }
+
+  .upload-zone {
+    @apply border-3 border-dashed border-brutal-black
+           bg-brutal-white p-12
+           flex flex-col items-center justify-center gap-4
+           text-center
+           transition-all duration-150 ease-brutal
+           cursor-pointer;
+  }
+
+  .upload-zone-active {
+    @apply upload-zone border-solid bg-brand-yellow/20
+           -translate-y-1 -translate-x-1 shadow-brutal;
+  }
+
+  .upload-zone-disabled {
+    @apply upload-zone opacity-50 cursor-not-allowed;
+  }
+
+  .progress-bar {
+    @apply h-4 w-full bg-brutal-gray border-2 border-brutal-black;
+  }
+
+  .progress-bar-fill {
+    @apply h-full bg-brand-blue transition-all duration-300 ease-brutal;
+  }
+
+  .flipbook-container {
+    perspective: 2000px;
+  }
+
+  .flipbook-controls {
+    @apply flex items-center gap-4 p-4
+           bg-brutal-white border-2 border-brutal-black
+           shadow-brutal;
+  }
+
+  .flipbook-page-indicator {
+    @apply px-4 py-2 bg-brutal-gray border-2 border-brutal-black
+           font-mono text-sm font-bold;
+  }
+
+  .pricing-feature {
+    @apply flex items-center gap-3 py-2;
+  }
+
+  .pricing-feature::before {
+    content: "→";
+    @apply font-bold text-brand-blue;
+  }
+
+  .pricing-price {
+    @apply text-h1 font-bold;
+  }
+
+  .pricing-period {
+    @apply text-small text-brutal-black/60;
+  }
+
+  .toast {
+    @apply fixed bottom-4 right-4 z-50
+           bg-brutal-white border-2 border-brutal-black
+           shadow-brutal-md
+           p-4 min-w-[300px]
+           animate-slide-up;
+  }
+
+  .toast-success {
+    @apply toast border-success bg-success/10;
+  }
+
+  .toast-error {
+    @apply toast border-brand-red bg-brand-red/10;
+  }
+
+  @media (max-width: 640px) {
+    .btn {
+      @apply w-full justify-center;
+    }
+    
+    .shadow-brutal,
+    .shadow-brutal-md,
+    .shadow-brutal-lg {
+      --tw-shadow: 3px 3px 0 0 #000;
+    }
+  }
+}
+
+.stf__wrapper {
+  @apply shadow-brutal-lg !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.stf__parent {
+  background: transparent !important;
+}
+
+.qr-container {
+  @apply p-6 bg-brutal-white border-2 border-brutal-black shadow-brutal;
+}
