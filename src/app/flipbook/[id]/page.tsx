@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import FlipbookViewer from "@/components/FlipbookViewer";
@@ -8,15 +8,13 @@ import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { generateFlipbookUrl } from "@/lib/utils";
 import { BookOpen, Share2, ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { Id } from "../../../../convex/_generated/dataModel";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function FlipbookPage({ params }: PageProps) {
-  const { id } = use(params);
+function FlipbookContent({ id }: { id: string }) {
   const [showQR, setShowQR] = useState(false);
 
   const flipbook = useQuery(api.flipbooks.get, { id: id as Id<"flipbooks"> });
@@ -46,8 +44,8 @@ export default function FlipbookPage({ params }: PageProps) {
           <p className="text-sm text-white/60 mb-6 max-w-md">
             This flipbook may have been deleted or the link is incorrect.
           </p>
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-medium text-sm rounded hover:bg-white/90 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -99,4 +97,29 @@ export default function FlipbookPage({ params }: PageProps) {
       />
     </div>
   );
+}
+
+export default function FlipbookPage({ params }: PageProps) {
+  const { id } = use(params);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-neutral-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+            <Loader2 className="absolute inset-0 m-auto w-5 h-5 text-white animate-pulse" />
+          </div>
+          <span className="text-sm font-medium text-white/60 uppercase tracking-wider">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return <FlipbookContent id={id} />;
 }

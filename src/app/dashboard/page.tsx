@@ -11,17 +11,12 @@ import { getAnonymousId } from "@/lib/anonymous";
 import { BookOpen, Plus, X, Lock } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-
-const TERMS_STORAGE_KEY = "flipbook_terms_accepted";
 import { Footer } from "@/components/Footer";
 
-export default function DashboardPage() {
-  const router = useRouter();
+function DashboardContent() {
   const [showUploader, setShowUploader] = useState(false);
   const [qrModal, setQrModal] = useState<{ url: string; title: string } | null>(null);
   const [anonymousId, setAnonymousId] = useState<string>("");
-  const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null);
 
   const anonymousFlipbooks = useQuery(
     api.flipbooks.listByAnonymousId,
@@ -31,16 +26,8 @@ export default function DashboardPage() {
   const deleteFlipbook = useMutation(api.flipbooks.remove);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const accepted = localStorage.getItem(TERMS_STORAGE_KEY) === "true";
-    if (!accepted) {
-      router.replace("/");
-      setTermsAccepted(false);
-      return;
-    }
-    setTermsAccepted(true);
     setAnonymousId(getAnonymousId());
-  }, [router]);
+  }, []);
 
   const handleUploadComplete = async (fileId: string, pageCount: number) => {
     if (!anonymousId) return;
@@ -73,7 +60,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (!termsAccepted || !anonymousId) {
+  if (!anonymousId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brutal-cream">
         <div className="text-h3 font-bold uppercase tracking-wider animate-pulse">Loading...</div>
@@ -189,4 +176,22 @@ export default function DashboardPage() {
       <Footer />
     </div>
   );
+}
+
+export default function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-brutal-cream">
+        <div className="text-h3 font-bold uppercase tracking-wider animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  return <DashboardContent />;
 }
