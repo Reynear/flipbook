@@ -1,52 +1,57 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore, type JSX } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { PDFUploader } from "@/components/PDFUploader";
 import { FlipbookCard } from "@/components/FlipbookCard";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { generateFlipbookUrl, MAX_FLIPBOOKS_ANONYMOUS } from "@/lib/utils";
-import { getAnonymousId } from "@/lib/anonymous";
-import { BookOpen, Plus, X, Lock } from "lucide-react";
+import { getSessionToken } from "@/lib/anonymous";
+import { BookOpen, Plus, Sparkles, X, Lock } from "lucide-react";
 import { Id } from "../../../convex/_generated/dataModel";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 
-function DashboardContent() {
-  const [showUploader, setShowUploader] = useState(false);
-  const [qrModal, setQrModal] = useState<{ url: string; title: string } | null>(null);
-  const [anonymousId, setAnonymousId] = useState<string>("");
+const ENABLE_POSTER_GENERATION =
+  process.env.NEXT_PUBLIC_ENABLE_POSTER_GENERATION === "true";
+
+function DashboardContent(): JSX.Element {
+  const sessionToken = useSyncExternalStore(
+    () => () => {},
+    getSessionToken,
+    () => "",
+  );
+  const [activeComposer, setActiveComposer] = useState<"upload" | null>(null);
+  const [qrModal, setQrModal] = useState<{ url: string; title: string } | null>(
+    null,
+  );
 
   const anonymousFlipbooks = useQuery(
-    api.flipbooks.listByAnonymousId,
-    anonymousId ? { anonymousId } : "skip"
+    api.flipbooks.listBySession,
+    sessionToken ? { sessionToken } : "skip",
   );
   const createFlipbook = useMutation(api.flipbooks.create);
   const deleteFlipbook = useMutation(api.flipbooks.remove);
 
-  useEffect(() => {
-    setAnonymousId(getAnonymousId());
-  }, []);
-
   const handleUploadComplete = async (fileId: string, pageCount: number) => {
-    if (!anonymousId) return;
+    if (!sessionToken) return;
     const title = `Flipbook ${new Date().toLocaleDateString()}`;
     await createFlipbook({
       fileId: fileId as Id<"_storage">,
       title,
       pageCount,
       fileSize: 0,
-      anonymousId,
+      sessionToken,
     });
-    setShowUploader(false);
+    setActiveComposer(null);
   };
 
   const handleDelete = async (id: string) => {
-    if (!anonymousId) return;
+    if (!sessionToken) return;
     await deleteFlipbook({
       id: id as Id<"flipbooks">,
-      anonymousId,
+      sessionToken,
     });
   };
 
@@ -60,15 +65,18 @@ function DashboardContent() {
     }
   };
 
-  if (!anonymousId) {
+  if (!sessionToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brutal-cream">
-        <div className="text-h3 font-bold uppercase tracking-wider animate-pulse">Loading...</div>
+        <div className="text-h3 font-bold uppercase tracking-wider animate-pulse">
+          Loading...
+        </div>
       </div>
     );
   }
 
-  const canUpload = !anonymousFlipbooks || anonymousFlipbooks.length < MAX_FLIPBOOKS_ANONYMOUS;
+  const canUpload =
+    !anonymousFlipbooks || anonymousFlipbooks.length < MAX_FLIPBOOKS_ANONYMOUS;
 
   return (
     <div className="min-h-screen bg-brutal-cream">
@@ -78,13 +86,15 @@ function DashboardContent() {
             <div className="p-2 bg-brand-yellow border-2 border-brutal-black shadow-brutal transition-all duration-150 ease-brutal group-hover:-translate-y-0.5 group-hover:-translate-x-0.5 group-hover:shadow-brutal-md">
               <BookOpen className="w-6 h-6 text-brutal-black" />
             </div>
-            <span className="text-h4 font-bold uppercase tracking-wider">Flipbook</span>
+            <span className="text-h4 font-bold uppercase tracking-wider">
+              Flipbook
+            </span>
           </Link>
         </div>
       </header>
 
-      <main className="container-brutal py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <main className="container-brutal py-8 lg:py-12">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-8">
           <div>
             <h1 className="text-h2 uppercase">Your Flipbooks</h1>
             <p className="text-body text-brutal-black/60 mt-1">
@@ -94,36 +104,53 @@ function DashboardContent() {
               </span>
             </p>
           </div>
-          <button
-            onClick={() => setShowUploader(true)}
-            disabled={!canUpload}
-            className="btn-primary"
-          >
-            <Plus className="w-5 h-5" />
-            New Flipbook
-          </button>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => setActiveComposer("upload")}
+              disabled={!canUpload}
+              className="btn-primary"
+            >
+              <Plus className="w-5 h-5" />
+              New Flipbook
+            </button>
+            {ENABLE_POSTER_GENERATION && (
+              <Link
+                href="/generate"
+                className={`btn-secondary ${!canUpload ? "opacity-50 pointer-events-none" : ""}`}
+              >
+                <Sparkles className="w-5 h-5" />
+                Generate
+              </Link>
+            )}
+          </div>
         </div>
 
-        {showUploader && (
+        {activeComposer && (
           <div className="mb-8">
             <div className="card">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-h3 uppercase">Upload PDF</h2>
+                <h2 className="text-h3 uppercase">
+                  Upload PDF or Image
+                </h2>
                 <button
-                  onClick={() => setShowUploader(false)}
+                  onClick={() => setActiveComposer(null)}
                   className="btn-ghost btn-icon"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               {canUpload ? (
-                <PDFUploader onUploadComplete={handleUploadComplete} anonymousId={anonymousId} />
+                <PDFUploader
+                  onUploadComplete={handleUploadComplete}
+                  sessionToken={sessionToken}
+                />
               ) : (
                 <div className="text-center py-8">
                   <Lock className="w-12 h-12 mx-auto mb-4 text-brutal-black/50" />
                   <h3 className="text-h4 uppercase mb-2">Limit Reached</h3>
                   <p className="text-body">
-                    You&apos;ve reached the {MAX_FLIPBOOKS_ANONYMOUS} flipbook limit.
+                    You&apos;ve reached the {MAX_FLIPBOOKS_ANONYMOUS} flipbook
+                    limit.
                   </p>
                 </div>
               )}
@@ -132,7 +159,7 @@ function DashboardContent() {
         )}
 
         {anonymousFlipbooks && anonymousFlipbooks.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {anonymousFlipbooks.map((flipbook) => (
               <FlipbookCard
                 key={flipbook._id}
@@ -149,16 +176,27 @@ function DashboardContent() {
             </div>
             <h3 className="text-h3 uppercase mb-2">No Flipbooks Yet</h3>
             <p className="text-body text-brutal-black/60 mb-6">
-              Upload your first PDF to create a flipbook.
+              Upload a PDF or image, or generate a poster to create your first flipbook.
             </p>
-            {!showUploader && (
-              <button
-                onClick={() => setShowUploader(true)}
-                className="btn-primary"
-              >
-                <Plus className="w-5 h-5" />
-                Create Flipbook
-              </button>
+            {!activeComposer && (
+              <div className="flex flex-wrap justify-center gap-4">
+                <button
+                  onClick={() => setActiveComposer("upload")}
+                  className="btn-primary"
+                >
+                  <Plus className="w-5 h-5" />
+                  Create Flipbook
+                </button>
+                {ENABLE_POSTER_GENERATION && (
+                  <Link
+                    href="/generate"
+                    className="btn-secondary"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    Generate
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -178,20 +216,6 @@ function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-brutal-cream">
-        <div className="text-h3 font-bold uppercase tracking-wider animate-pulse">Loading...</div>
-      </div>
-    );
-  }
-
+export default function DashboardPage(): JSX.Element {
   return <DashboardContent />;
 }

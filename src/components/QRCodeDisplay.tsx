@@ -22,26 +22,76 @@ export function QRCodeDisplay({
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+  const entranceRafRef = useRef<number | null>(null);
+  const visibilityRafRef = useRef<number | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  const copiedTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (entranceRafRef.current !== null) {
+      cancelAnimationFrame(entranceRafRef.current);
+      entranceRafRef.current = null;
+    }
+    if (visibilityRafRef.current !== null) {
+      cancelAnimationFrame(visibilityRafRef.current);
+      visibilityRafRef.current = null;
+    }
+    if (closeTimerRef.current !== null) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
     if (isOpen) {
       setShouldRender(true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+      entranceRafRef.current = requestAnimationFrame(() => {
+        visibilityRafRef.current = requestAnimationFrame(() => {
           setIsVisible(true);
+          visibilityRafRef.current = null;
         });
       });
     } else {
       setIsVisible(false);
-      const timer = setTimeout(() => setShouldRender(false), 300);
-      return () => clearTimeout(timer);
+      closeTimerRef.current = window.setTimeout(() => {
+        setShouldRender(false);
+        closeTimerRef.current = null;
+      }, 300);
     }
+
+    return () => {
+      if (entranceRafRef.current !== null) {
+        cancelAnimationFrame(entranceRafRef.current);
+        entranceRafRef.current = null;
+      }
+      if (visibilityRafRef.current !== null) {
+        cancelAnimationFrame(visibilityRafRef.current);
+        visibilityRafRef.current = null;
+      }
+      if (closeTimerRef.current !== null) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) {
+        clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(url);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copiedTimerRef.current !== null) {
+      clearTimeout(copiedTimerRef.current);
+    }
+    copiedTimerRef.current = window.setTimeout(() => {
+      setCopied(false);
+      copiedTimerRef.current = null;
+    }, 2000);
   };
 
   const handleDownload = () => {
@@ -89,7 +139,27 @@ export function QRCodeDisplay({
         "transition-all duration-300 ease-brutal",
         isVisible ? "opacity-100" : "opacity-0"
       )}
-      onClick={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          onClose();
+          return;
+        }
+        if (
+          (event.key === "Enter" || event.key === " ") &&
+          event.target === event.currentTarget
+        ) {
+          event.preventDefault();
+          onClose();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label="Close QR code modal"
     >
       <div
         className={cn(
@@ -99,7 +169,6 @@ export function QRCodeDisplay({
             ? "opacity-100 scale-100 translate-y-0"
             : "opacity-0 scale-95 translate-y-4"
         )}
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header flex items-center justify-between">
           <div>

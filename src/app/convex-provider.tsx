@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 
 let convexClient: ConvexReactClient | null = null;
 
@@ -16,16 +16,6 @@ function getConvexClient() {
 }
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <>{children}</>;
-  }
-
   const client = getConvexClient();
   if (!client) {
     return <>{children}</>;

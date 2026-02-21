@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import FlipbookViewer from "@/components/FlipbookViewer";
@@ -101,25 +101,6 @@ function FlipbookContent({ id }: { id: string }) {
 
 export default function FlipbookPage({ params }: PageProps) {
   const { id } = use(params);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-neutral-900">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-            <Loader2 className="absolute inset-0 m-auto w-5 h-5 text-white animate-pulse" />
-          </div>
-          <span className="text-sm font-medium text-white/60 uppercase tracking-wider">Loading...</span>
-        </div>
-      </div>
-    );
-  }
 
   return <FlipbookContent id={id} />;
 }

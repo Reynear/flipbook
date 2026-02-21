@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { FileText, ExternalLink, Share2, Trash2 } from "lucide-react";
-import { cn, formatFileSize } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface Flipbook {
   _id: string;
@@ -12,6 +11,7 @@ interface Flipbook {
   fileSize: number;
   createdAt: number;
   fileUrl: string | null;
+  sourceType?: "upload" | "generated_poster";
 }
 
 interface FlipbookCardProps {
@@ -20,15 +20,15 @@ interface FlipbookCardProps {
   onShare?: (id: string) => void;
 }
 
-export function FlipbookCard({ flipbook, onDelete, onShare }: FlipbookCardProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
+export function FlipbookCard({
+  flipbook,
+  onDelete,
+  onShare,
+}: FlipbookCardProps) {
   const handleDelete = () => {
-    if (showDeleteConfirm) {
+    const confirmed = window.confirm("Delete this flipbook?");
+    if (confirmed) {
       onDelete?.(flipbook._id);
-      setShowDeleteConfirm(false);
-    } else {
-      setShowDeleteConfirm(true);
     }
   };
 
@@ -36,11 +36,14 @@ export function FlipbookCard({ flipbook, onDelete, onShare }: FlipbookCardProps)
     onShare?.(flipbook._id);
   };
 
-  const formattedDate = new Date(flipbook.createdAt).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formattedDate = new Date(flipbook.createdAt).toLocaleDateString(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
+  );
 
   return (
     <div
@@ -48,26 +51,19 @@ export function FlipbookCard({ flipbook, onDelete, onShare }: FlipbookCardProps)
         "card-hover",
         "flex flex-col overflow-hidden",
         "hover:-translate-y-1 hover:-translate-x-1",
-        "w-full p-0"
+        "w-full p-0",
       )}
-      onMouseLeave={() => setShowDeleteConfirm(false)}
     >
       <Link
         href={`/flipbook/${flipbook._id}`}
         className="relative aspect-[4/3] bg-brutal-gray border-b-2 border-brutal-black flex items-center justify-center"
       >
         <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.03)_10px,rgba(0,0,0,0.03)_20px)]" />
-        <FileText
-          className="w-16 h-16 text-brutal-black/30"
-          strokeWidth={2}
-        />
+        <FileText className="w-16 h-16 text-brutal-black/30" strokeWidth={2} />
       </Link>
 
       <div className="flex flex-col flex-1 p-4 bg-brutal-white">
-        <Link
-          href={`/flipbook/${flipbook._id}`}
-          className="block mb-3"
-        >
+        <Link href={`/flipbook/${flipbook._id}`} className="block mb-3">
           <h3
             className="font-bold uppercase tracking-wider text-brutal-black truncate"
             title={flipbook.title}
@@ -78,6 +74,9 @@ export function FlipbookCard({ flipbook, onDelete, onShare }: FlipbookCardProps)
 
         <div className="flex items-center gap-2 mb-4">
           <span className="badge-free">{flipbook.pageCount} PG</span>
+          <span className="badge-free">
+            {flipbook.sourceType === "generated_poster" ? "POSTER" : "PDF"}
+          </span>
           <span className="badge-free">{formattedDate}</span>
         </div>
 
@@ -102,13 +101,8 @@ export function FlipbookCard({ flipbook, onDelete, onShare }: FlipbookCardProps)
           <button
             type="button"
             onClick={handleDelete}
-            className={cn(
-              "btn btn-sm btn-icon",
-              showDeleteConfirm
-                ? "btn-danger"
-                : "btn-outline hover:bg-brand-red hover:text-brutal-white hover:border-brand-red"
-            )}
-            title={showDeleteConfirm ? "Click again to confirm" : "Delete"}
+            className="btn btn-sm btn-icon btn-outline hover:bg-brand-red hover:text-brutal-white hover:border-brand-red"
+            title="Delete"
           >
             <Trash2 className="w-4 h-4" />
           </button>

@@ -4,10 +4,11 @@ import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import Image from "next/image";
 
 GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
+  import.meta.url,
 ).toString();
 
 interface FlipbookViewerProps {
@@ -25,24 +26,29 @@ const getViewportPadding = (mobile: boolean) => ({
   y: mobile ? 24 : 56,
 });
 
-const Page = forwardRef<HTMLDivElement, PageProps>(({ pageImage, pageNumber, totalPages }, ref) => {
-  return (
-    <div 
-      ref={ref} 
-      className="relative w-full h-full bg-white overflow-hidden"
-    >
-      <img
-        src={pageImage}
-        alt={`Page ${pageNumber}`}
-        className="w-full h-full object-contain select-none pointer-events-none"
-        draggable={false}
-      />
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/60 rounded text-[10px] font-mono text-white">
-        {pageNumber} / {totalPages}
+const Page = forwardRef<HTMLDivElement, PageProps>(
+  ({ pageImage, pageNumber, totalPages }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className="relative w-full h-full bg-white overflow-hidden"
+      >
+        <Image
+          src={pageImage}
+          alt={`Page ${pageNumber}`}
+          fill
+          sizes="(max-width: 768px) 100vw, 50vw"
+          className="object-contain select-none pointer-events-none"
+          draggable={false}
+          unoptimized
+        />
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/60 rounded text-[10px] font-mono text-white">
+          {pageNumber} / {totalPages}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 Page.displayName = "Page";
 
@@ -55,28 +61,36 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isMobile, setIsMobile] = useState(false);
   const [pageAspectRatio, setPageAspectRatio] = useState<number | null>(null);
+  const isSinglePage = totalPages <= 1;
 
   const framePadding = 12;
   const frameBorder = 2;
-  
+
   const flipBookRef = useRef<typeof HTMLFlipBook>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const updateDimensions = useCallback(() => {
     if (!containerRef.current) return;
-    
+
     const containerWidth = containerRef.current.clientWidth;
     const containerHeight = containerRef.current.clientHeight;
     const mobile = window.innerWidth < 768;
     setIsMobile(mobile);
-    
+
     const aspectRatio = pageAspectRatio ?? 1.4;
     const viewportPadding = getViewportPadding(mobile);
     const frameInset = framePadding * 2 + frameBorder * 2;
 
-    const availableWidth = Math.max(0, containerWidth - viewportPadding.x * 2 - frameInset);
-    const availableHeight = Math.max(0, containerHeight - viewportPadding.y * 2 - frameInset);
-    const maxPageWidth = mobile ? availableWidth : availableWidth / 2;
+    const availableWidth = Math.max(
+      0,
+      containerWidth - viewportPadding.x * 2 - frameInset,
+    );
+    const availableHeight = Math.max(
+      0,
+      containerHeight - viewportPadding.y * 2 - frameInset,
+    );
+    const maxPageWidth =
+      mobile || isSinglePage ? availableWidth : availableWidth / 2;
     const maxPageHeight = availableHeight;
 
     let width = maxPageWidth;
@@ -91,18 +105,18 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
       width: Math.floor(width),
       height: Math.floor(height),
     });
-  }, [pageAspectRatio]);
+  }, [isSinglePage, pageAspectRatio]);
 
   useEffect(() => {
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     window.addEventListener("orientationchange", updateDimensions);
-    
+
     const resizeObserver = new ResizeObserver(updateDimensions);
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
-    
+
     return () => {
       window.removeEventListener("resize", updateDimensions);
       window.removeEventListener("orientationchange", updateDimensions);
@@ -111,46 +125,67 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
   }, [updateDimensions]);
 
   useEffect(() => {
+    if (!pdfUrl) {
+      return;
+    }
+
+    let isActive = true;
+    const loadingTask = getDocument(pdfUrl);
+
     const loadPdf = async () => {
       try {
         setLoading(true);
         setLoadingProgress(0);
-        
-        const pdf = await getDocument(pdfUrl).promise;
+        setPages([]);
+        setTotalPages(0);
+        setCurrentPage(0);
+        setPageAspectRatio(null);
+
+        const pdf = await loadingTask.promise;
+        if (!isActive) return;
         const numPages = pdf.numPages;
         setTotalPages(numPages);
-        
+        setCurrentPage(0);
+
         const pageImages: string[] = [];
-        
+
         for (let i = 1; i <= numPages; i++) {
+          if (!isActive) return;
           const page = await pdf.getPage(i);
           const scale = 2.5;
           const viewport = page.getViewport({ scale });
+          if (!isActive) return;
           if (i === 1) {
             setPageAspectRatio(viewport.height / viewport.width);
           }
-          
+
           const canvas = document.createElement("canvas");
           const context = canvas.getContext("2d")!;
           canvas.width = viewport.width;
           canvas.height = viewport.height;
-          
+
           await page.render({ canvasContext: context, viewport }).promise;
+          if (!isActive) return;
           pageImages.push(canvas.toDataURL("image/jpeg", 0.95));
           setLoadingProgress(Math.round((i / numPages) * 100));
         }
-        
+
+        if (!isActive) return;
         setPages(pageImages);
         setLoading(false);
       } catch (error) {
+        if (!isActive) return;
         console.error("Failed to load PDF:", error);
         setLoading(false);
       }
     };
 
-    if (pdfUrl) {
-      loadPdf();
-    }
+    void loadPdf();
+
+    return () => {
+      isActive = false;
+      void loadingTask.destroy();
+    };
   }, [pdfUrl]);
 
   const handleFlip = useCallback((e: { data: number }) => {
@@ -158,15 +193,18 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
   }, []);
 
   const goToPrevPage = useCallback(() => {
+    if (isSinglePage) return;
     (flipBookRef.current as any)?.pageFlip()?.flipPrev();
-  }, []);
+  }, [isSinglePage]);
 
   const goToNextPage = useCallback(() => {
+    if (isSinglePage) return;
     (flipBookRef.current as any)?.pageFlip()?.flipNext();
-  }, []);
+  }, [isSinglePage]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isSinglePage) return;
       if (e.key === "ArrowLeft") {
         goToPrevPage();
       } else if (e.key === "ArrowRight") {
@@ -176,27 +214,41 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [goToPrevPage, goToNextPage]);
+  }, [goToPrevPage, goToNextPage, isSinglePage]);
 
   const isReady =
-    !loading && pages.length > 0 && dimensions.width > 0 && dimensions.height > 0;
+    !loading &&
+    pages.length > 0 &&
+    dimensions.width > 0 &&
+    dimensions.height > 0;
   const pageWidth = Math.max(1, dimensions.width);
   const pageHeight = Math.max(1, dimensions.height);
-  const bookWidth = isMobile ? pageWidth : pageWidth * 2;
+  const bookWidth = isMobile || isSinglePage ? pageWidth : pageWidth * 2;
   const bookHeight = pageHeight;
   const frameInset = framePadding * 2 + frameBorder * 2;
   const frameWidth = bookWidth + frameInset;
   const frameHeight = bookHeight + frameInset;
   const viewportPadding = getViewportPadding(isMobile);
 
+  const currentRangeStart = isSinglePage
+    ? 1
+    : isMobile
+      ? currentPage + 1
+      : Math.min(currentPage * 2 + 1, totalPages);
+  const currentRangeEnd = isSinglePage
+    ? 1
+    : isMobile
+      ? currentPage + 1
+      : Math.min(currentPage * 2 + 2, totalPages);
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className="flex-1 flex flex-col items-center justify-center bg-neutral-900 relative overflow-hidden w-full h-full"
       style={{ padding: `${viewportPadding.y}px ${viewportPadding.x}px` }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.03)_0%,_transparent_70%)]" />
-      
+
       <div className="absolute inset-0 z-10 flex items-center justify-center">
         {loading && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-neutral-900/80 backdrop-blur-sm">
@@ -209,7 +261,7 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
                 Preparing Flipbook
               </p>
               <div className="w-48 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-white rounded-full transition-all duration-300"
                   style={{ width: `${loadingProgress}%` }}
                 />
@@ -220,16 +272,18 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
             </div>
           </div>
         )}
-        <button
-          onClick={goToPrevPage}
-          disabled={currentPage === 0}
-          className="absolute left-2 md:left-8 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 disabled:opacity-20 disabled:hover:bg-white/10 rounded-full backdrop-blur-sm transition-all"
-          aria-label="Previous page"
-        >
-          <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-white" />
-        </button>
+        {!isSinglePage && (
+          <button
+            onClick={goToPrevPage}
+            disabled={currentPage === 0}
+            className="absolute left-2 md:left-8 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 disabled:opacity-20 disabled:hover:bg-white/10 rounded-full backdrop-blur-sm transition-all"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-white" />
+          </button>
+        )}
 
-        <div 
+        <div
           className="relative flex items-center justify-center rounded-[18px] bg-neutral-100/90 p-2 shadow-2xl"
           style={{
             filter: "drop-shadow(0 25px 50px rgba(0,0,0,0.5))",
@@ -249,11 +303,11 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
               maxHeight={2000}
               size="fixed"
               maxShadowOpacity={0.7}
-              showCover={true}
+              showCover={!isSinglePage}
               mobileScrollSupport={true}
               swipeDistance={20}
               useMouseEvents={true}
-              usePortrait={isMobile}
+              usePortrait={isMobile || isSinglePage}
               flippingTime={600}
               drawShadow={true}
               onFlip={handleFlip}
@@ -267,10 +321,10 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
               disableFlipByClick={false}
             >
               {pages.map((pageImage, index) => (
-                <Page 
-                  key={index} 
-                  pageImage={pageImage} 
-                  pageNumber={index + 1} 
+                <Page
+                  key={`${pdfUrl}-page-${index + 1}`}
+                  pageImage={pageImage}
+                  pageNumber={index + 1}
                   totalPages={totalPages}
                 />
               ))}
@@ -278,20 +332,22 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
           )}
         </div>
 
-        <button
-          onClick={goToNextPage}
-          disabled={currentPage >= totalPages - (isMobile ? 1 : 2)}
-          className="absolute right-2 md:right-8 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 disabled:opacity-20 disabled:hover:bg-white/10 rounded-full backdrop-blur-sm transition-all"
-          aria-label="Next page"
-        >
-          <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-white" />
-        </button>
+        {!isSinglePage && (
+          <button
+            onClick={goToNextPage}
+            disabled={currentPage >= totalPages - (isMobile ? 1 : 2)}
+            className="absolute right-2 md:right-8 z-20 w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 disabled:opacity-20 disabled:hover:bg-white/10 rounded-full backdrop-blur-sm transition-all"
+            aria-label="Next page"
+          >
+            <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-white" />
+          </button>
+        )}
       </div>
 
       <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 z-20">
         <div className="flex items-center gap-3 px-4 py-2 bg-black/60 backdrop-blur-sm rounded-full">
           <span className="text-sm font-mono text-white">
-            {isMobile ? currentPage + 1 : Math.min(currentPage * 2 + 1, totalPages)}-{isMobile ? currentPage + 1 : Math.min(currentPage * 2 + 2, totalPages)}
+            {currentRangeStart}-{currentRangeEnd}
           </span>
           <span className="text-white/40">/</span>
           <span className="text-sm font-mono text-white/60">{totalPages}</span>
@@ -300,7 +356,7 @@ export default function FlipbookViewer({ pdfUrl }: FlipbookViewerProps) {
 
       <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 z-20">
         <p className="text-[10px] text-white/40 uppercase tracking-wider">
-          Swipe or use arrow keys
+          {isSinglePage ? "Single page view" : "Swipe or use arrow keys"}
         </p>
       </div>
     </div>
