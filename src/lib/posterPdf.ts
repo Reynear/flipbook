@@ -1,6 +1,6 @@
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
-import type { PosterSchema } from "@/lib/posterSchema";
+import type { PosterSchema } from "$lib/posterSchema";
 
 const A4_PORTRAIT: [number, number] = [210, 297];
 

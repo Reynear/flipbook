@@ -1,5 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { browser } from "$app/environment";
+import { PUBLIC_APP_URL } from "$env/static/public";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -17,9 +19,10 @@ export function formatFileSize(bytes: number): string {
 }
 
 export function generateFlipbookUrl(id: string): string {
-  const baseUrl = typeof window !== "undefined" 
-    ? window.location.origin 
-    : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = browser ? window.location.origin : PUBLIC_APP_URL;
+  if (!baseUrl) {
+    throw new Error("PUBLIC_APP_URL must be set.");
+  }
   return `${baseUrl}/flipbook/${id}`;
 }
 

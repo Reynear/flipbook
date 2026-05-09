@@ -1,8 +1,10 @@
 # Dependencies
 node_modules/
 
-# Next.js
+# Framework build output
 .next/
+.svelte-kit/
+build/
 out/
 
 # Environment
@@ -15,6 +17,9 @@ out/
 
 # Build
 *.tsbuildinfo
+
+# Test artifacts
+.playwright-mcp/
 
 # OS
 .DS_Store
